@@ -1,4 +1,6 @@
--- link-tools: WezTerm-style link handling for Tern.
+-- Vim-first opens: file clicks (origin "link") open in vim in a new tab.
+-- Set LINK_TOOLS_EDITOR=code to use VS Code instead, or empty to use Tern default.
+
 -- Routes skill://, local://, omp:// schemes; file paths go to the built-in
 -- opener (origin "link"); search/open actions via palette commands.
 --
@@ -109,3 +111,22 @@ tern.command({
     cx:toast("info", "Link Tools", "Copy a URL first, then click it in a pane")
   end,
 })
+
+-- Editor-first file opens: claim origin "link" (clicked paths) and open in
+-- $LINK_TOOLS_EDITOR (vim default) in a new tab. Everything else passes through.
+tern.route.open(function(req, cx)
+  if req.origin ~= "link" then
+    return nil
+  end
+  local editor = os.getenv("LINK_TOOLS_EDITOR") or "vim"
+  if editor == "" then
+    return nil
+  end
+  local dir = req.path:match("^(.*)/[^/]*$") or "."
+  local target = req.path
+  if req.line then
+    target = target .. " +" .. tostring(req.line)
+  end
+  cx.layout:new_tab({ cwd = dir, command = editor .. " " .. target })
+  return { handled = true }
+end)
