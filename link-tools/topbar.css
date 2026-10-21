@@ -1,0 +1,19 @@
+/* topbar autohide (persistent): managed by link-tools plugin via tern.css.
+   Re-applied at every window_start, survives restarts. */
+main#panel {
+  margin-top: -55px !important;
+  padding-top: 55px !important;
+}
+nav#tabbar {
+  position: absolute !important;
+  top: -58px !important;
+  left: 0 !important;
+  right: 0 !important;
+  opacity: 0 !important;
+  z-index: 9999 !important;
+  transition: top 0.18s ease, opacity 0.18s ease !important;
+}
+nav#tabbar:hover {
+  top: 0 !important;
+  opacity: 1 !important;
+}
