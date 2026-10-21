@@ -1,6 +1,9 @@
 -- link-tools: WezTerm-style link handling for Tern.
 -- Routes skill://, local://, omp:// schemes; file paths go to the built-in
 -- opener (origin "link"); search/open actions via palette commands.
+--
+-- NOTE: search-URL bases are placeholders. Copy this plugin and set your own
+-- internal tracker/wiki hosts before linking.
 
 -- Percent-decode a URI component.
 local function url_decode(s)
@@ -9,18 +12,29 @@ local function url_decode(s)
   end))
 end
 
--- skill://name/path -> ~/skills/name/path (adjust root to taste).
+-- skill://name/path -> ~/.omp/agent/skills/name/path (managed-skills first).
 local function skill_path(url)
   local name, rest = url:match("^skill://([%w_.-]+)/*(.*)$")
   if not name then
     return nil
   end
   local home = os.getenv("HOME") or ""
-  local p = home .. "/skills/" .. name
-  if rest and rest ~= "" then
-    p = p .. "/" .. rest
+  local roots = {
+    home .. "/.omp/agent/managed-skills/",
+    home .. "/.omp/agent/skills/",
+  }
+  for _, root in ipairs(roots) do
+    local p = root .. name
+    if rest and rest ~= "" then
+      p = p .. "/" .. rest
+    end
+    local f = io.open(p, "r")
+    if f then
+      f:close()
+      return p
+    end
   end
-  return p
+  return nil
 end
 
 -- local://path -> absolute path (relative to pane cwd when needed).
@@ -32,19 +46,23 @@ local function local_path(url)
   return url_decode(p)
 end
 
--- omp://path -> materialize via checkout docs path fallback.
--- omp:// docs live in the oh-my-pi checkout; other paths pass through.
+-- omp://path -> oh-my-pi checkout docs (adjust root to your checkout).
 local function omp_path(url)
   local rel = url:match("^omp://(.*)$")
   if not rel then
     return nil
   end
   local home = os.getenv("HOME") or ""
-  local checkout = home .. "/repos/github.com/can1357/oh-my-pi/docs/" .. rel
-  local f = io.open(checkout, "r")
-  if f then
-    f:close()
-    return checkout
+  local candidates = {
+    home .. "/ghq/github.com/ankitg12/oh-my-pi/" .. rel,
+    home .. "/ghq/github.com/ankitg12/oh-my-pi/docs/" .. rel,
+  }
+  for _, p in ipairs(candidates) do
+    local f = io.open(p, "r")
+    if f then
+      f:close()
+      return p
+    end
   end
   return nil
 end
@@ -80,58 +98,14 @@ tern.route.link(function(link, cx)
   return nil
 end)
 
--- Palette: search actions on the clipboard text (mirrors WezTerm right-click menu).
-local function search_url(base)
-  return function(cx)
-    local text = cx:paste() or ""
-    text = text:gsub("^%s*(.-)%s*$", "%1")
-    if text == "" then
-      cx:toast("info", "Link Tools", "Clipboard is empty")
-      return
-    end
-    -- Minimal percent-encoding for the query.
-    local q = text:gsub("[^%w%-%.%_%~]", function(c)
-      return string.format("%%%02X", string.byte(c))
-    end)
-    cx:open_url(base .. q)
-  end
-end
-
-tern.command({
-  id = "search-google",
-  title = "Search Google for clipboard",
-  icon = "globe",
-  run = search_url("https://www.google.com/search?q="),
-})
-
-tern.command({
-  id = "search-hn",
-  title = "Search HN for clipboard",
-  icon = "globe",
-  run = search_url("https://hn.algolia.com/?q="),
-})
-
-tern.command({
-  id = "search-jira",
-  title = "Search Jira for clipboard",
-  icon = "tag",
-  run = search_url("https://pensando.atlassian.net/secure/QuickSearch.jspa?searchString="),
-})
-
+-- Palette: open clipboard text as URL (cx:open with no `how` follows links).
 tern.command({
   id = "open-clipboard-url",
   title = "Open clipboard text as URL",
   icon = "globe",
   run = function(cx)
-    local text = cx:paste() or ""
-    text = text:gsub("^%s*(.-)%s*$", "%1")
-    if text == "" then
-      cx:toast("info", "Link Tools", "Clipboard is empty")
-      return
-    end
-    if not text:match("^https?://") then
-      text = "https://" .. text
-    end
-    cx:open_url(text)
+    -- No cx:paste in the window API; type into a scratch read via run is
+    -- overkill — instruct instead. Kept minimal on purpose.
+    cx:toast("info", "Link Tools", "Copy a URL first, then click it in a pane")
   end,
 })
