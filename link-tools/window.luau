@@ -69,6 +69,25 @@ local function omp_path(url)
   return nil
 end
 
+-- Expand ~ and split trailing :line[:col] the terminal passes through.
+local function split_location(p)
+  local home = os.getenv("HOME") or ""
+  if p:sub(1, 2) == "~/" then
+    p = home .. p:sub(2)
+  elseif p == "~" then
+    p = home
+  end
+  local path, line, col = p:match("^(.-):(%d+):?(%d*)$")
+  if path and path ~= "" then
+    local f = io.open(path, "r")
+    if f then
+      f:close()
+      return path, tonumber(line), col ~= "" and tonumber(col) or nil
+    end
+  end
+  return p, nil, nil
+end
+
 tern.route.link(function(link, cx)
   local url = link.url or ""
 
@@ -122,10 +141,12 @@ tern.route.open(function(req, cx)
   if editor == "" then
     return nil
   end
-  local dir = req.path:match("^(.*)/[^/]*$") or "."
-  local target = req.path
-  if req.line then
-    target = target .. " +" .. tostring(req.line)
+  local path, line = split_location(req.path)
+  line = line or req.line
+  local dir = path:match("^(.*)/[^/]*$") or "."
+  local target = path
+  if line then
+    target = target .. " +" .. tostring(line)
   end
   cx.layout:new_tab({ cwd = dir, command = editor .. " " .. target })
   return { handled = true }
