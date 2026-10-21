@@ -1,0 +1,6 @@
+schema = 1
+id = "link-tools"
+name = "Link Tools"
+version = "0.1.0"
+description = "WezTerm-style link handling: skill/local/omp schemes, file opens, search actions."
+window = "window.luau"
