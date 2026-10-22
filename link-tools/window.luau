@@ -151,3 +151,109 @@ tern.route.open(function(req, cx)
   cx.layout:new_tab({ cwd = dir, command = editor .. " " .. target })
   return { handled = true }
 end)
+
+-- Open URLs visible in the focused pane (WezTerm-style safety net).
+-- Terminal panes already get clickable links from Tern's own detectors, but
+-- native tool-output code blocks (e.g. omp Bash cards) carry no link element
+-- for any route to claim — so harvest http(s) URLs from pane text instead.
+local function clean_url(raw)
+  local u = raw:gsub("[.,;:!?]+$", "")
+  u = u:gsub("[%)%]%}]+$", "")
+  u = u:gsub("['\"]+$", "")
+  u = u:gsub(">$", "")
+  return u
+end
+
+local function harvest_urls(lines)
+  local out, seen = {}, {}
+  for _, line in ipairs(lines) do
+    if type(line) == "string" and line:find("http", 1, true) then
+      for raw in line:gmatch("https?://[^%s\"'<>%[%]{}|%^`]+") do
+        local u = clean_url(raw)
+        if #u > 10 and not seen[u] then
+          seen[u] = true
+          local ctx = line:gsub("^%s+", ""):gsub("%s+", " ")
+          if #ctx > 90 then ctx = ctx:sub(1, 87) .. "..." end
+          table.insert(out, { url = u, context = ctx })
+        end
+      end
+    end
+  end
+  return out
+end
+
+local function pane_text_lines(cx, pane)
+  local lines = {}
+  local ok, res = pcall(function()
+    return cx.session:read(pane, { lines = 2000, scrollback = true, max_chars = 64000 })
+  end)
+  if ok then
+    if type(res) == "string" then
+      table.insert(lines, res)
+    elseif type(res) == "table" and type(res.lines) == "table" then
+      for _, l in ipairs(res.lines) do
+        table.insert(lines, l)
+      end
+    end
+  end
+  local ok2, msgs = pcall(function()
+    return cx.agents:transcript(pane, { last = 50 })
+  end)
+  if ok2 and type(msgs) == "table" then
+    for _, m in ipairs(msgs) do
+      if type(m) == "table" then
+        if type(m.text) == "string" and #m.text > 0 then
+          table.insert(lines, m.text)
+        end
+        if type(m.tools) == "table" then
+          for _, t in pairs(m.tools) do
+            if type(t) == "string" then
+              table.insert(lines, t)
+            elseif type(t) == "table" then
+              for _, v in pairs(t) do
+                if type(v) == "string" and #v > 0 then
+                  table.insert(lines, v)
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  return lines
+end
+
+tern.command({
+  id = "open-pane-url",
+  title = "Open URL from focused pane",
+  icon = "globe",
+  keys = { "cmd+shift+o" },
+  run = function(cx)
+    local pane = cx.session:focused()
+    if not pane then
+      cx:toast("warn", "Link Tools", "No focused pane")
+      return
+    end
+    local found = harvest_urls(pane_text_lines(cx, pane))
+    if #found == 0 then
+      cx:toast("info", "Link Tools", "No URLs in the focused pane")
+      return
+    end
+    if #found == 1 then
+      cx:open(found[1].url)
+      return
+    end
+    local items = {}
+    for i, f in ipairs(found) do
+      if i > 50 then break end
+      table.insert(items, { label = f.url, detail = f.context, url = f.url })
+    end
+    cx:pick({ items = items, placeholder = "Open URL from pane", icon = "globe", action = "open" })
+      :next(function(choice, _err, cx2)
+        if choice and type(choice.url) == "string" then
+          (cx2 or cx):open(choice.url)
+        end
+      end)
+  end,
+})
