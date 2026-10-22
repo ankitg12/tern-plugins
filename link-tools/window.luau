@@ -1,11 +1,18 @@
--- Vim-first opens: file clicks (origin "link") open in vim in a new tab.
--- Set LINK_TOOLS_EDITOR=code to use VS Code instead, or empty to use Tern default.
-
--- Routes skill://, local://, omp:// schemes; file paths go to the built-in
--- opener (origin "link"); search/open actions via palette commands.
+-- External-first opens: file clicks (origin "link") open in the OS default
+-- program via `open(1)` — no Tern pane, no vim tab. skill://, local://,
+-- omp:// resolve to paths and open the same way.
+--
+-- Web links pass through to Tern's built-in handling (link_target=Browser).
+-- origin "cli"/"carly" (tern open from scripts, OMP/agent) pass through —
+-- we only claim origin "link" (clicked paths in panes).
 --
 -- NOTE: search-URL bases are placeholders. Copy this plugin and set your own
 -- internal tracker/wiki hosts before linking.
+
+-- `open(1)` on macOS. Callback form: fire-and-forget, click returns immediately.
+local function os_open(target)
+  tern.process.run({ "open", target }, function(_res) end)
+end
 
 -- Percent-decode a URI component.
 local function url_decode(s)
@@ -98,22 +105,21 @@ tern.route.link(function(link, cx)
     return { handled = true }
   end
 
-  -- skill:// -> open the skill file.
+  -- skill:// / local:// / omp:// -> resolve and open externally.
   local sp = skill_path(url)
   if sp then
-    return { path = sp }
+    os_open(sp)
+    return { handled = true }
   end
-
-  -- local:// -> open the path.
   local lp = local_path(url)
   if lp then
-    return { path = lp }
+    os_open(lp)
+    return { handled = true }
   end
-
-  -- omp:// docs -> open the checkout file.
   local op = omp_path(url)
   if op then
-    return { path = op }
+    os_open(op)
+    return { handled = true }
   end
 
   return nil
@@ -131,24 +137,15 @@ tern.command({
   end,
 })
 
--- Editor-first file opens: claim origin "link" (clicked paths) and open in
--- $LINK_TOOLS_EDITOR (vim default) in a new tab. Everything else passes through.
+-- External-first file opens: claim origin "link" (clicked paths) and open in
+-- the OS default program. Everything else (palette/files/drop/system/cli/carly)
+-- passes through, so `tern open` from scripts and OMP/agent keeps working.
 tern.route.open(function(req, cx)
   if req.origin ~= "link" then
     return nil
   end
-  local editor = os.getenv("LINK_TOOLS_EDITOR") or "vim"
-  if editor == "" then
-    return nil
-  end
-  local path, line = split_location(req.path)
-  line = line or req.line
-  local dir = path:match("^(.*)/[^/]*$") or "."
-  local target = path
-  if line then
-    target = target .. " +" .. tostring(line)
-  end
-  cx.layout:new_tab({ cwd = dir, command = editor .. " " .. target })
+  local path, _line, _col = split_location(req.path)
+  os_open(path)
   return { handled = true }
 end)
 
