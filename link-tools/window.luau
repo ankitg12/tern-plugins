@@ -228,7 +228,8 @@ tern.command({
   id = "open-pane-url",
   title = "Open URL from focused pane",
   icon = "globe",
-  keys = { "cmd+shift+o" },
+  -- No default chord: runs from the palette ("Open URL from focused pane") or
+  -- a user binding of action plugin.link-tools.open-pane-url.
   run = function(cx)
     local pane = cx.session:focused()
     if not pane then
