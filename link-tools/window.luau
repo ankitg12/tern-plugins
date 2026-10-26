@@ -63,8 +63,8 @@ local function omp_path(url)
   end
   local home = os.getenv("HOME") or ""
   local candidates = {
-    home .. "/ghq/github.com/ankitg12/oh-my-pi/" .. rel,
-    home .. "/ghq/github.com/ankitg12/oh-my-pi/docs/" .. rel,
+    home .. "/repos/github.com/ankitg12/oh-my-pi/" .. rel,
+    home .. "/repos/github.com/ankitg12/oh-my-pi/docs/" .. rel,
   }
   for _, p in ipairs(candidates) do
     local f = io.open(p, "r")
