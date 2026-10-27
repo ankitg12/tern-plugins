@@ -44,14 +44,15 @@ tern plugin list   # expect: persistent-workspaces 0.1.0 ... window  ready
 
 ## How it works
 
-`tern.override("new_tab", fn)` in the window half. It covers the built-in
-`new_tab` action (key `Ctrl+Shift+T`, tab-bar `+`). It does **not** cover a
-plugin that calls `cx.layout:new_tab` itself, for example the `+` in
-`rezhajulio/workspaces-sidebar` 0.1.8, and it does not change splits. On lx01
-that sidebar's `+` is patched locally to call `cx:action("new_tab")`.
+`tern.override("new_tab", fn)` in the window half covers the built-in `new_tab`
+action (key `Ctrl+Shift+T`, tab-bar `+`). Tern skips overrides when a plugin
+calls `cx.layout:new_tab` directly (`tern.d.luau:1617`), so the `+` in
+`rezhajulio/workspaces-sidebar` 0.1.8 opens tabs at its own cwd; on lx01 that
+`+` is patched locally to call `cx:action("new_tab")`. Splits keep Tern's
+built-in cwd.
 
-Do not test with `tern ctl run new_tab`: it types the text `new_tab` into the
-focused pane; it does not run the action.
+To test, press `Ctrl+Shift+T`. `tern ctl run new_tab` types the text `new_tab`
+into the focused pane (seen 2026-10-27, Tern 0.9.5).
 
 ## Not yet ported from herdr persistent-spaces
 
