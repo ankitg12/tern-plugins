@@ -2,5 +2,4 @@ schema = 1
 id = "link-tools"
 name = "Link Tools"
 version = "0.2.0"
-styles = ["topbar.css"]
 window = "window.luau"

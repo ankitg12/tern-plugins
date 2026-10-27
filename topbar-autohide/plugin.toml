@@ -1,0 +1,8 @@
+schema = 1
+id = "topbar-autohide"
+name = "Top-bar autohide"
+version = "0.2.0"
+description = "Hides the top bar until the pointer reaches the top edge (stencil-hq/tern-sdk#129). Size-independent: same file on macOS and Linux."
+icon = "layout"
+window = "window.luau"
+styles = ["topbar.css"]

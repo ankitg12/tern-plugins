@@ -1,0 +1,22 @@
+/* Top-bar autohide for Tern (no native setting yet: stencil-hq/tern-sdk#129).
+   No pixel values: the bar slides up by its own height (translateY -100%), so the same file
+   works for the macOS titlebar (55px) and the Linux CSD bar (43px).
+   Tern places main#panel with `top` = bar height; top:0 gives that space back.
+   A 6px strip stays on screen as the hover target (display:none would remove it). */
+main#panel {
+  top: 0 !important;
+}
+nav#tabbar {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  transform: translateY(calc(-100% + 6px)) !important;
+  opacity: 0 !important;
+  z-index: 9999 !important;
+  transition: transform 0.18s ease, opacity 0.18s ease !important;
+}
+nav#tabbar:hover {
+  transform: none !important;
+  opacity: 1 !important;
+}

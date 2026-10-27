@@ -1,0 +1,3 @@
+--!strict
+-- No code: Tern needs a window entry to load a plugin. The work is the manifest
+-- `styles = ["topbar.css"]`, which Tern installs at every window start.
