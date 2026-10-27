@@ -1,0 +1,5 @@
+schema = 1
+id = "persistent-workspaces"
+name = "Persistent Workspaces"
+version = "0.2.0"
+window = "window.luau"
