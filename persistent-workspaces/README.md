@@ -27,6 +27,14 @@ A workspace that is not in the config keeps Tern's built-in behaviour.
 }
 ```
 
+Optional `command`: a shell command line for the tab that refills an empty workspace, for example a
+persistent agent. The new tab runs the command in `root`; `Ctrl+Shift+T` still opens a plain shell.
+
+```json
+    { "name": "zero", "root": "~/agent-zero/work",
+      "command": "~/repos/github.com/ankitg12/agent-commons/agent-zero/launch-omp.sh" }
+```
+
 - `name` is the exact workspace name in the Tern sidebar (case-sensitive).
 - `root` may start with `~`.
 - An array, not an object, because `tern.json.decode` loses object member order

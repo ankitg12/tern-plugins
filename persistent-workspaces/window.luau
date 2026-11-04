@@ -10,7 +10,9 @@
 local HOME = tern.getenv("HOME") or ""
 local CONFIG = HOME .. "/.config/tern/persistent-workspaces.json"
 
-type Workspace = { name: string, root: string }
+-- command: optional shell command line for the tab that refills an empty
+-- workspace (for example a persistent agent). Ctrl+Shift+T still opens a shell.
+type Workspace = { name: string, root: string, command: string? }
 
 local function expand(path: string): string
 	if path == "~" then
@@ -44,7 +46,8 @@ local function load(cx: WindowCx): { Workspace }
 	local out: { Workspace } = {}
 	for _, w in data.workspaces do
 		if type(w) == "table" and type(w.name) == "string" and type(w.root) == "string" then
-			table.insert(out, { name = w.name, root = expand(w.root) })
+			local command = if type(w.command) == "string" and w.command ~= "" then w.command else nil
+			table.insert(out, { name = w.name, root = expand(w.root), command = command })
 		end
 	end
 	return out
@@ -93,9 +96,9 @@ local function refill_now(cx: WindowCx)
 	if not ok then
 		return
 	end
-	local roots: { [string]: string } = {}
+	local pinned: { [string]: Workspace } = {}
 	for _, w in load(cx) do
-		roots[w.name] = w.root
+		pinned[w.name] = w
 	end
 	local home: number? = nil
 	for _, s in sessions do
@@ -104,12 +107,12 @@ local function refill_now(cx: WindowCx)
 		end
 	end
 	for _, s in sessions do
-		local root = roots[s.name]
-		if root ~= nil and s.tabs == 0 and tern.fs.exists(root) then
+		local w = pinned[s.name]
+		if w ~= nil and s.tabs == 0 and tern.fs.exists(w.root) then
 			if not s.current then
 				cx.sessions:switch(s.id)
 			end
-			cx.layout:new_tab({ cwd = root })
+			cx.layout:new_tab({ cwd = w.root, command = w.command })
 		end
 	end
 	local now = cx.sessions:current()
