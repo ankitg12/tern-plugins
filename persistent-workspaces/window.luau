@@ -9,6 +9,7 @@
 
 local HOME = tern.getenv("HOME") or ""
 local CONFIG = HOME .. "/.config/tern/persistent-workspaces.json"
+tern.fs.write("/tmp/pw-refill.log", "loaded\n")
 
 -- command: optional shell command line for the tab that refills an empty
 -- workspace (for example a persistent agent). Ctrl+Shift+T still opens a shell.
@@ -94,8 +95,14 @@ local function refill_now(cx: WindowCx)
 		return cx.sessions:list()
 	end)
 	if not ok then
+		tern.fs.write("/tmp/pw-refill.log", "list failed\n")
 		return
 	end
+	local names: { string } = {}
+	for _, s in sessions do
+		table.insert(names, s.name .. "=" .. tostring(s.tabs))
+	end
+	tern.fs.write("/tmp/pw-refill.log", "sessions: " .. table.concat(names, ", ") .. "\n")
 	local pinned: { [string]: Workspace } = {}
 	for _, w in load(cx) do
 		pinned[w.name] = w
@@ -128,6 +135,7 @@ local function refill(cx: WindowCx)
 		return
 	end
 	busy = true
+	tern.fs.write("/tmp/pw-refill.log", "refill ran\n")
 	local ok, err = pcall(refill_now, cx)
 	busy = false
 	if not ok then
